@@ -1,0 +1,69 @@
+---
+title: "Writing Proofs in Python"
+subtitle: "A tiny demo for computing classrooms"
+author: "PyCon Singapore Education Summit"
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    code-line-numbers: true
+execute:
+  echo: false
+---
+
+## Why Python?
+
+- Students already know variables, expressions, and functions.
+- A proof can look like a small program.
+- The computer checks every input, not just the examples we remembered.
+
+## Demo: full adder
+
+A full adder has three Boolean inputs:
+
+- `a`
+- `b`
+- `cin`
+
+It should return the same result as adding the three bits.
+
+## Circuit
+
+```python
+from z3 import Bools, Xor, And, Or, If, prove
+
+a, b, cin = Bools("a b cin")
+
+sum_bit = Xor(Xor(a, b), cin)
+carry = Or(And(a, b), And(cin, Xor(a, b)))
+```
+
+## Specification
+
+```python
+total = If(a, 1, 0) + If(b, 1, 0) + If(cin, 1, 0)
+
+prove(If(sum_bit, 1, 0) == total % 2)
+prove(If(carry, 1, 0) == total / 2)
+```
+
+## What z3 checks
+
+```text
+proved
+proved
+```
+
+The two proof calls mean:
+
+- `sum_bit` is the low bit of `a + b + cin`.
+- `carry` is the high bit of `a + b + cin`.
+
+## Takeaway
+
+Python can host different styles of proof:
+
+- algebra with SymPy
+- circuits and logic with z3
+- textbook steps with mathesis or pyzar
+
