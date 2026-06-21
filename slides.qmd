@@ -49,6 +49,7 @@ prove(Implies(valid, true_mid == ZeroExt(1, (lo + hi) / 2)))                  # 
 prove(Implies(valid, true_mid == ZeroExt(1, (lo & hi) + LShR(lo ^ hi, 1))))   # fixed
 ```
 
+Output
 ```text
 counterexample
 [hi = 1874714396, lo = 2069860050]
@@ -138,10 +139,92 @@ assert simplify(total - n * (2 * a + (n - 1) * d) / 2) == 0
 
 SymPy proves the general O/A-level formula, not just a list of examples.
 
+## A proof by hand
+
+$$
+A \land B \;\vdash\; B \land A
+$$
+
+mathesis builds a natural-deduction proof, one justified step per line:
+
+```python
+from mathesis.grammars import BasicGrammar
+from mathesis.deduction.natural_deduction import NDTree, rules as R
+
+g = BasicGrammar()
+nd = NDTree([g.parse("A∧B")], g.parse("B∧A"))   # premise ⊢ goal
+nd.apply(nd[2], R.Conjunction.Intro())          # to prove B∧A, prove B and A  [∧I]
+nd.apply(nd[4], R.Conjunction.Elim("right"))    # B follows from A∧B           [∧E]
+nd.apply(nd[6], R.Conjunction.Elim("left"))     # A follows from A∧B           [∧E]
+assert nd.is_valid()                            # every branch is justified
+```
+
+## The same proof, forwards
+
+$$
+A \land B \;\vdash\; B \land A
+$$
+
+pyzar builds it **forwards** — assume `A∧B`, take it apart, put it back together:
+
+```python
+from proof import proof
+from tactics import CONJ
+
+@proof
+def CONJ_COMM(p):
+    p.goal("!a:bool b:bool. a /\\ b ==> b /\\ a")
+    p.fix("a b")                             # consider some bool a and b
+    h = p.assume("h: a /\\ b")               # h is our assumption a /\ b
+    ha, hb = p.split(h)                      # from a /\ b, get a and b separately
+    p.thus("b /\\ a").by_thm(CONJ(hb, ha))   # recombine, swapped
+```
+
+## A bigger proof: the halting problem
+
+No SK combinator can decide halting:
+
+$$
+\;\vdash\; \neg\,\exists H.\ \mathsf{halts\_decider}(H)
+$$
+
+pyzar is a tactic-style prover on a tiny HOL kernel — you write the proof as justified steps, just like a textbook:
+
+## pyzar proof
+
+```python
+@proof
+def HALTING_UNDECIDABLE(p):
+    p.goal("~ (?H. halts_decider H)")
+    with p.suppose("?H. halts_decider H") as h_ex:
+        H, _ = p.choose("H", from_=h_ex)
+        # H decides halting (flipped):  halts t = ~halts (App_t H t)
+        ...
+        # Curry diagonal: a term d that reduces to  App_t H d  (feeds
+        # itself to H), so  halts d = halts (App_t H d)
+        h_diag = p.have("?d. halts d = halts (App_t H d)").by(...)
+        ...
+        # combine: halts (App_t H d) = ~halts (App_t H d)  — contradiction
+        with p.cases_on(EXCLUDED_MIDDLE, "halts (App_t H d)"):
+            ...
+```
+
+## The diagonal does the work
+
+The Curry term `d` **feeds itself to `H`**:
+
+```text
+d                 ->> App_t H d            -- d reduces to "H applied to d"
+halts d            = halts (App_t H d)     -- reduction preserves halting
+halts d            = ~halts (App_t H d)    -- H is a decider (flipped)
+--------------------------------------------------------------
+halts (App_t H d)  = ~halts (App_t H d)    -- P = ~P, impossible
+```
+
 ## Takeaway
 
 Python can host different styles of proof:
 
-- algebra with SymPy
 - circuits and logic with z3
+- algebra with SymPy
 - textbook steps with mathesis or pyzar
