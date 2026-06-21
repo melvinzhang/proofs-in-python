@@ -19,16 +19,13 @@ execute:
 
 ## Tests pass for years; a proof finds the bug
 
-`list.sort()` is **Timsort**. For ~9 years it had a bug in its
-run-merging logic — undetected by tests.
+`list.sort()` is **Timsort**. For ~9 years it had a bug in its run-merging logic — undetected by tests.
 
 - **2015:** de Gouw et al. tried to *prove* it correct with the KeY
-  theorem prover but failed
-- **Python 3.11:** the merge policy is replaced with **Powersort**
+  theorem prover but failed^[S. de Gouw, J. Rot, F. S. de Boer, R. Bubel, R. Hähnle, "OpenJDK's `java.utils.Collection.sort()` is broken," CAV 2015.]
+- **Python 3.11:** the merge policy is replaced with **Powersort**^[J. I. Munro & S. Wild, [*Nearly-Optimal Mergesorts*](https://www.wild-inter.net/publications/munro-wild-2018), ESA 2018.]
 
-The prover didn't just find the bug — it motivated a better algorithm.
-
-## A bug you can't test away
+## Another bug you can't test away
 
 Binary search picks the middle index:
 
