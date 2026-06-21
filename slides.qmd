@@ -1,5 +1,5 @@
 ---
-title: "Writing Proofs in Python"
+title: "Proofs in Python"
 subtitle: "PyCon Singapore 2026 Edu Summit"
 author: "Melvin Zhang"
 format:
@@ -10,6 +10,14 @@ format:
 execute:
   echo: false
 ---
+
+## Computational Thinkerers
+
+maker faire 2017
+
+learning journey
+
+critical software
 
 ## Why Proofs?
 
@@ -23,20 +31,22 @@ execute:
 
 - **2015:** de Gouw et al. tried to *prove* it correct with the KeY
   theorem prover but failed^[S. de Gouw, J. Rot, F. S. de Boer, R. Bubel, R. Hähnle, "OpenJDK's `java.utils.Collection.sort()` is broken," CAV 2015.]
-- **Python 3.11:** the merge policy is replaced with **Powersort**^[J. I. Munro & S. Wild, [*Nearly-Optimal Mergesorts*](https://www.wild-inter.net/publications/munro-wild-2018), ESA 2018.]
+- **Python 3.11:** merge policy is replaced with **Powersort**^[J. I. Munro & S. Wild, [*Nearly-Optimal Mergesorts*](https://www.wild-inter.net/publications/munro-wild-2018), ESA 2018.]
 
 ## Another bug you can't test away
 
-Binary search picks the middle index:
+Java's binary search picks the middle index:
 
 ```java
-int mid = (low + high) / 2;   // lived in java.util.Arrays for ~9 years
+int low = ...                // int is signed 32-bit
+int high = ... 
+int mid = (low + high) / 2;  // lived in java.util.Arrays for ~9 years
 ```
-
-- Two 32-bit indices → **2⁶⁴ ≈ 1.8 × 10¹⁹** input pairs
-- At a billion checks per second, exhausting them takes **~585 years**
+What is the bug?
 
 ## z3 finds it — and proves the fix
+
+z3 is a solver developed by Microsoft.
 
 ```python
 from z3 import BitVec, ZeroExt, LShR, Implies, And, prove
@@ -120,7 +130,7 @@ The two proof calls mean:
 - `sum_bit` is the low bit of `a + b + cin`.
 - `carry` is the high bit of `a + b + cin`.
 
-## Why not just exhaustive checks?
+## Replace a loop with an expression
 
 $$
 \sum_{k=0}^{n-1} (a + kd) = \frac{n(2a + (n - 1)d)}{2}
@@ -132,12 +142,13 @@ from sympy import symbols, summation, simplify
 a, d = symbols("a d")
 n, k = symbols("n k", positive=True, integer=True)
 
-total = summation(a + k * d, (k, 0, n - 1))
+lhs = summation(a + k * d, (k, 0, n - 1))
+rhs = n * (2 * a + (n - 1) * d) / 2
 
-assert simplify(total - n * (2 * a + (n - 1) * d) / 2) == 0
+assert lhs.equals(rhs)
 ```
 
-SymPy proves the general O/A-level formula, not just a list of examples.
+SymPy proves the general AP formula, not just a list of examples.
 
 ## A proof by hand
 
@@ -145,7 +156,7 @@ $$
 A \land B \;\vdash\; B \land A
 $$
 
-mathesis builds a natural-deduction proof, one justified step per line:
+mathesis builds a natural-deduction proof backwards.
 
 ```python
 from mathesis.grammars import BasicGrammar
@@ -159,13 +170,11 @@ nd.apply(nd[6], R.Conjunction.Elim("left"))     # A follows from A∧B          
 assert nd.is_valid()                            # every branch is justified
 ```
 
-## The same proof, forwards
+## The same proof with pyzar
 
-$$
-A \land B \;\vdash\; B \land A
-$$
+pyzar is a declarative proof checker inspired by Mizar/Isar
 
-pyzar builds it **forwards** — assume `A∧B`, take it apart, put it back together:
+pyzar builds it **forwards** — assume `A∧B`, take it apart, put it back together.
 
 ```python
 from proof import proof
@@ -175,20 +184,18 @@ from tactics import CONJ
 def CONJ_COMM(p):
     p.goal("!a:bool b:bool. a /\\ b ==> b /\\ a")
     p.fix("a b")                             # consider some bool a and b
-    h = p.assume("h: a /\\ b")               # h is our assumption a /\ b
+    h = p.assume("a /\\ b")                  # h is our assumption a /\ b
     ha, hb = p.split(h)                      # from a /\ b, get a and b separately
     p.thus("b /\\ a").by_thm(CONJ(hb, ha))   # recombine, swapped
 ```
 
-## A bigger proof: the halting problem
+## Proving the halting problem
 
 No SK combinator can decide halting:
 
 $$
 \;\vdash\; \neg\,\exists H.\ \mathsf{halts\_decider}(H)
 $$
-
-pyzar is a tactic-style prover on a tiny HOL kernel — you write the proof as justified steps, just like a textbook:
 
 ## pyzar proof
 
@@ -227,4 +234,4 @@ Python can host different styles of proof:
 
 - circuits and logic with z3
 - algebra with SymPy
-- textbook steps with mathesis or pyzar
+- manual steps with mathesis or pyzar
