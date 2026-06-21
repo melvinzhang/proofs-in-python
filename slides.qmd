@@ -3,7 +3,7 @@ title: "Proofs in Python"
 subtitle: "PyCon Singapore 2026 Edu Summit"
 author:
   - name: "Melvin Zhang"
-    affiliation: "Computational Thinkerer"
+    affiliation: "Computational Thinkerers"
 format:
   revealjs:
     theme: simple
@@ -27,16 +27,20 @@ int high = ...
 int mid  = (low + high) / 2;  // shipped in java.util.Arrays for ~9 years
 ```
 
-Looks fine.
+Looks fine.^[A similar bug led to a $128M exploit. See Balancer v2 rounding bug.]
 
 What is the bug?^[J. Bloch, [*Nearly All Binary Searches and Mergesorts are Broken*](https://research.google/blog/extra-extra-read-all-about-it-nearly-all-binary-searches-and-mergesorts-are-broken/), Google Research Blog 2006]
 
 ## Why proofs?
 
-A green test suite only checks the cases you thought of.
+Java's binary search **had a test suite**.
 
-- Generated code + generated tests can be wrong *together*
-- A proof checks **all** possible cases
+- A test suite checks the cases *you thought of*
+- A proof checks **all 2⁶⁴** cases at once
+
+. . .
+
+But first the proof makes you write the **spec**:
 
 ## A Python bug from 2002 to 2015
 
@@ -121,9 +125,9 @@ def CONJ_COMM(p):
 
 Python can host different styles of proof:
 
-- circuits and logic with z3
-- algebra with SymPy
-- manual steps with pyzar
+- bit-precise arithmetic with z3
+- symbolic algebra with SymPy
+- declarative step-by-step deduction with pyzar
 
 # Additional content
 
@@ -177,8 +181,7 @@ prove(If(sum_bit, 1, 0) == total % 2)
 prove(If(carry, 1, 0) == total / 2)
 ```
 
-## What z3 checks
-
+Output
 ```text
 proved
 proved
@@ -189,10 +192,10 @@ The two proof calls mean:
 - `sum_bit` is the low bit of `a + b + cin`.
 - `carry` is the high bit of `a + b + cin`.
 
-## A proof by hand
+## A natural deduction proof
 
 $$
-A \land B \;\vdash\; B \land A
+A \land B \;\implies\; B \land A
 $$
 
 mathesis builds a natural-deduction proof backwards.
@@ -214,7 +217,7 @@ assert nd.is_valid()                            # every branch is justified
 No program can decide halting:
 
 $$
-\;\vdash\; \neg\,\exists H.\ \mathsf{halts\_decider}(H)
+\neg\,\exists H.\ \mathsf{halts\_decider}(H)
 $$
 
 where halts_decider H is a program where
@@ -236,20 +239,21 @@ d & \twoheadrightarrow & \mathsf{App}_t\,H\,d & \text{(diagonal)}\\
 \end{array}
 $$
 
-## pyzar proof
+## Sketch of the pyzar proof
 
 ```python
 @proof
 def HALTING_UNDECIDABLE(p):
     p.goal("~ (?H. halts_decider H)")
     with p.suppose("?H. halts_decider H") as h_ex:
-        # Curry diagonal: a term d that reduces to App_t H d:
-        # therefore, halts d = halts (App_t H d)
-        h_diag = p.have("?d. halts d = halts (App_t H d)").by(...)
+        h_diag = p.have("?d. halts d = halts (App_t H d)").by(..)
+        d = p.choose("d", from=h_diag)
+        # d reduces to App_t H d, therefore
+        # halts d = halts (App_t H d)
         ...
-        H, _ = p.choose("H", from_=h_ex)
-        # H decides halting (flipped)
-        # therefore, halts t = ~halts (App_t H t)
+        H, _ = p.choose("H", from=h_ex)
+        # H decides halting (flipped), therefore
+        # halts d = ~halts (App_t H d)
         ...
-        # combine: halts (App_t H d) = ~halts (App_t H d)  — contradiction
+        # contradiction
 ```
