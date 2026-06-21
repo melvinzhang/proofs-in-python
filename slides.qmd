@@ -127,7 +127,7 @@ Python can host different styles of proof:
 
 # Additional content
 
-## Demo: full adder
+## Verifying a full adder
 
 A full adder has three Boolean inputs:
 
@@ -217,22 +217,24 @@ $$
 \;\vdash\; \neg\,\exists H.\ \mathsf{halts\_decider}(H)
 $$
 
-where halts_decider H is a program:
+where halts_decider H is a program where
 
 * `(H d)` halts if `d` run forever
-* `(H d)` runs forver if `d` halts
+* `(H d)` runs forever if `d` halts
 
 ## The diagonal does the work
 
-Let `d` be a program that evaluates to `(H d)`
+Construct a program `d` that evaluates to `(H d)`
 
-```text
-d                 ->> App_t H d            -- d reduces to "H applied to d"
-halts d            = halts (App_t H d)     -- reduction preserves halting
-halts d            = ~halts (App_t H d)    -- H is a decider (flipped)
---------------------------------------------------------------
-halts (App_t H d)  = ~halts (App_t H d)    -- P = ~P, impossible
-```
+$$
+\begin{array}{rcll}
+d & \twoheadrightarrow & \mathsf{App}_t\,H\,d & \text{(diagonal)}\\
+\mathsf{halts}\,d & = & \mathsf{halts}(\mathsf{App}_t\,H\,d) & \text{(reduction)}\\
+\mathsf{halts}\,d & = & \neg\,\mathsf{halts}(\mathsf{App}_t\,H\,d) & \text{(decider)}\\
+\hline
+\mathsf{halts}(\mathsf{App}_t\,H\,d) & = & \neg\,\mathsf{halts}(\mathsf{App}_t\,H\,d) & \text{($P=\neg P$)}
+\end{array}
+$$
 
 ## pyzar proof
 
@@ -241,15 +243,13 @@ halts (App_t H d)  = ~halts (App_t H d)    -- P = ~P, impossible
 def HALTING_UNDECIDABLE(p):
     p.goal("~ (?H. halts_decider H)")
     with p.suppose("?H. halts_decider H") as h_ex:
-        H, _ = p.choose("H", from_=h_ex)
-        # H decides halting (flipped):  halts t = ~halts (App_t H t)
-        ...
-        # Curry diagonal: a term d that reduces to  App_t H d  (feeds
-        # itself to H), so  halts d = halts (App_t H d)
+        # Curry diagonal: a term d that reduces to App_t H d:
+        # therefore, halts d = halts (App_t H d)
         h_diag = p.have("?d. halts d = halts (App_t H d)").by(...)
         ...
+        H, _ = p.choose("H", from_=h_ex)
+        # H decides halting (flipped)
+        # therefore, halts t = ~halts (App_t H t)
+        ...
         # combine: halts (App_t H d) = ~halts (App_t H d)  — contradiction
-        with p.cases_on(EXCLUDED_MIDDLE, "halts (App_t H d)"):
-            ...
 ```
-
