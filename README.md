@@ -1,5 +1,7 @@
-# Writing proofs in Python
+# Proofs in Python
 
 A lightning talk at PyCon Singapore Education Summit.
 
-Audience are mostly educators for O and A level computing.
+Audience are computing educators.
+
+https://melvinzhang.github.io/proofs-in-python/
