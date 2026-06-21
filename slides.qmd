@@ -38,15 +38,14 @@ A green test suite only checks the cases you thought of.
 - Generated code + generated tests can be wrong *together*
 - A proof checks **all** possible cases
 
-## A Python bug from 2002 to 2013
+## A Python bug from 2002 to 2015
 
-`list.sort()` is **Timsort**. 
+`list.sort()` was **Timsort**. 
 
-There was an undetected bug in its run-merging logic.
+de Gouw et al. tried to *prove* it correct with the KeY theorem prover but
+failed^[S. de Gouw et al., OpenJDK's `sort()` is broken, CAV 2015].
 
-- **2015:** de Gouw et al. tried to *prove* it correct with the KeY
-  theorem prover but failed^[S. de Gouw et al., OpenJDK's `sort()` is broken, CAV 2015]
-- **Python 3.11:** merge policy is replaced with **Powersort**^[J. I. Munro & S. Wild, [*Nearly-Optimal Mergesorts*](https://www.wild-inter.net/publications/munro-wild-2018), ESA 2018]
+Adding a fourth case to the merging policy fixed it.
 
 ## Back to the binary search bug
 
