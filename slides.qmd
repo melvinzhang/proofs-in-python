@@ -1,7 +1,9 @@
 ---
 title: "Proofs in Python"
 subtitle: "PyCon Singapore 2026 Edu Summit"
-author: "Melvin Zhang"
+author:
+  - name: "Melvin Zhang"
+    affiliation: "Computational Thinkerer"
 format:
   revealjs:
     theme: simple
@@ -15,32 +17,40 @@ execute:
 
 ![](P1010133.JPG){fig-align="center" width="80%"}
 
-## Why Proofs?
+## Spot the bug
 
-- Complementary to tests
-- Harder to cheat on a proof
-- A proof can be a small program
+Java's binary search picks the middle index:
 
-## Tests pass for years; a proof finds the bug
+```java
+int low  = ...                // int is signed 32-bit
+int high = ...
+int mid  = (low + high) / 2;  // shipped in java.util.Arrays for ~9 years
+```
 
-`list.sort()` is **Timsort**. For ~9 years it had a bug in its run-merging logic — undetected by tests.
+Looks fine.
+
+What is the bug?^[J. Bloch, [*Nearly All Binary Searches and Mergesorts are Broken*](https://research.google/blog/extra-extra-read-all-about-it-nearly-all-binary-searches-and-mergesorts-are-broken/), Google Research Blog 2006]
+
+## Why proofs?
+
+A green test suite only checks the cases you thought of.
+
+- Generated code + generated tests can be wrong *together*
+- A proof checks **all** possible cases
+
+## A Python bug from 2002 to 2013
+
+`list.sort()` is **Timsort**. 
+
+There was an undetected bug in its run-merging logic.
 
 - **2015:** de Gouw et al. tried to *prove* it correct with the KeY
   theorem prover but failed^[S. de Gouw et al., OpenJDK's `sort()` is broken, CAV 2015]
 - **Python 3.11:** merge policy is replaced with **Powersort**^[J. I. Munro & S. Wild, [*Nearly-Optimal Mergesorts*](https://www.wild-inter.net/publications/munro-wild-2018), ESA 2018]
 
-## Another bug you can't test away
+## Back to the binary search bug
 
-Java's binary search picks the middle index:
-
-```java
-int low = ...                // int is signed 32-bit
-int high = ... 
-int mid = (low + high) / 2;  // lived in java.util.Arrays for ~9 years
-```
-What is the bug?
-
-## z3 finds it — and proves the fix
+`lo + hi` overflows to a negative `int`.
 
 ```python
 from z3 import BitVec, ZeroExt, LShR, Implies, And, prove
@@ -62,8 +72,6 @@ counterexample
 [hi = 1874714396, lo = 2069860050]
 proved
 ```
-
-`lo + hi` overflows to a negative `int`.
 
 ## Replace a loop with an expression
 
