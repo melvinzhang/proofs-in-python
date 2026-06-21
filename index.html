@@ -403,7 +403,7 @@
 Melvin Zhang 
 </div>
         <p class="quarto-title-affiliation">
-            Computational Thinkerer
+            Computational Thinkerers
           </p>
     </div>
 </div>
@@ -416,59 +416,66 @@ Melvin Zhang
 <section id="spot-the-bug" class="slide level2">
 <h2>Spot the bug</h2>
 <p>Java’s binary search picks the middle index:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode numberSource java number-lines code-with-copy"><code class="sourceCode java"><span id="cb1-1"><a href=""></a><span class="dt">int</span> low  <span class="op">=</span> <span class="kw">...</span>                <span class="co">// int is signed 32-bit</span></span>
-<span id="cb1-2"><a href=""></a><span class="dt">int</span> high <span class="op">=</span> <span class="kw">...</span></span>
-<span id="cb1-3"><a href=""></a><span class="dt">int</span> mid  <span class="op">=</span> <span class="op">(</span>low <span class="op">+</span> high<span class="op">)</span> <span class="op">/</span> <span class="dv">2</span><span class="op">;</span>  <span class="co">// shipped in java.util.Arrays for ~9 years</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<p>Looks fine.</p>
-<p>What is the bug?<sup>1</sup></p>
-<aside><ol class="aside-footnotes"><li id="fn1"><p>J. Bloch, <a href="https://research.google/blog/extra-extra-read-all-about-it-nearly-all-binary-searches-and-mergesorts-are-broken/"><em>Nearly All Binary Searches and Mergesorts are Broken</em></a>, Google Research Blog 2006</p></li></ol></aside></section>
+<div class="sourceCode" id="cb1"><pre class="sourceCode java code-with-copy"><code class="sourceCode java"><span id="cb1-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> low  <span class="op">=</span> <span class="kw">...</span>                <span class="co">// int is signed 32-bit</span></span>
+<span id="cb1-2"><a href="" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> high <span class="op">=</span> <span class="kw">...</span></span>
+<span id="cb1-3"><a href="" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> mid  <span class="op">=</span> <span class="op">(</span>low <span class="op">+</span> high<span class="op">)</span> <span class="op">/</span> <span class="dv">2</span><span class="op">;</span>  <span class="co">// shipped in java.util.Arrays for ~9 years</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Looks fine.<sup>1</sup></p>
+<p>What is the bug?<sup>2</sup></p>
+<aside><ol class="aside-footnotes"><li id="fn1"><p>A similar bug led to a $128M exploit. See Balancer v2 rounding bug.</p></li><li id="fn2"><p>J. Bloch, <a href="https://research.google/blog/extra-extra-read-all-about-it-nearly-all-binary-searches-and-mergesorts-are-broken/"><em>Nearly All Binary Searches and Mergesorts are Broken</em></a>, Google Research Blog 2006</p></li></ol></aside></section>
 <section id="why-proofs" class="slide level2">
 <h2>Why proofs?</h2>
-<p>A green test suite only checks the cases you thought of.</p>
+<p>Java’s binary search <strong>had a test suite</strong>.</p>
 <ul>
-<li>Generated code + generated tests can be wrong <em>together</em></li>
-<li>A proof checks <strong>all</strong> possible cases</li>
+<li>A test suite checks the cases <em>you thought of</em></li>
+<li>A proof checks <strong>all 2⁶⁴</strong> cases at once</li>
 </ul>
+<div class="fragment">
+<p>But first the proof makes you write the <strong>spec</strong>.</p>
+</div>
 </section>
 <section id="a-python-bug-from-2002-to-2015" class="slide level2">
 <h2>A Python bug from 2002 to 2015</h2>
-<p><code>list.sort()</code> was <strong>Timsort</strong>.</p>
-<p>de Gouw et al.&nbsp;tried to <em>prove</em> it correct with the KeY theorem prover but failed<sup>1</sup>.</p>
-<p>Adding a fourth case to the merging policy fixed it.</p>
-<aside><ol class="aside-footnotes"><li id="fn2"><p>S. de Gouw et al., OpenJDK’s <code>sort()</code> is broken, CAV 2015</p></li></ol></aside></section>
+<p>Timsort in <code>list.sort()</code> was silently broken for 13 years.</p>
+<ul>
+<li>Shipped in Python, Java, and Android</li>
+<li>No test ever triggered it</li>
+<li>de Gouw et al.&nbsp;found it while <em>proving</em> it correct<sup>1</sup></li>
+</ul>
+<p>Writing the proof forced the missing case into the open.</p>
+<aside><ol class="aside-footnotes"><li id="fn3"><p>S. de Gouw et al., OpenJDK’s <code>sort()</code> is broken, CAV 2015</p></li></ol></aside></section>
 <section id="back-to-the-binary-search-bug" class="slide level2">
 <h2>Back to the binary search bug</h2>
 <p><code>lo + hi</code> overflows to a negative <code>int</code>.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href=""></a><span class="im">from</span> z3 <span class="im">import</span> BitVec, ZeroExt, LShR, Implies, And, prove</span>
-<span id="cb2-2"><a href=""></a></span>
-<span id="cb2-3"><a href=""></a>lo, hi <span class="op">=</span> BitVec(<span class="st">"lo"</span>, <span class="dv">32</span>), BitVec(<span class="st">"hi"</span>, <span class="dv">32</span>)</span>
-<span id="cb2-4"><a href=""></a>valid <span class="op">=</span> And(lo <span class="op">&gt;=</span> <span class="dv">0</span>, hi <span class="op">&gt;=</span> <span class="dv">0</span>)                        <span class="co"># real array indices</span></span>
-<span id="cb2-5"><a href=""></a>true_mid <span class="op">=</span> LShR(ZeroExt(<span class="dv">1</span>, lo) <span class="op">+</span> ZeroExt(<span class="dv">1</span>, hi), <span class="dv">1</span>)  <span class="co"># midpoint, no overflow</span></span>
-<span id="cb2-6"><a href=""></a></span>
-<span id="cb2-7"><a href=""></a>buggy <span class="op">=</span> (lo <span class="op">+</span> hi) <span class="op">/</span> <span class="dv">2</span></span>
-<span id="cb2-8"><a href=""></a>prove(Implies(valid, true_mid <span class="op">==</span> ZeroExt(<span class="dv">1</span>, buggy)))</span>
-<span id="cb2-9"><a href=""></a></span>
-<span id="cb2-10"><a href=""></a>fixed <span class="op">=</span> (lo <span class="op">&amp;</span> hi) <span class="op">+</span> LShR(lo <span class="op">^</span> hi, <span class="dv">1</span>)</span>
-<span id="cb2-11"><a href=""></a>prove(Implies(valid, true_mid <span class="op">==</span> ZeroExt(<span class="dv">1</span>, fixed)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> z3 <span class="im">import</span> BitVec, ZeroExt, LShR, Implies, And, prove</span>
+<span id="cb2-2"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="" aria-hidden="true" tabindex="-1"></a>lo, hi <span class="op">=</span> BitVec(<span class="st">"lo"</span>, <span class="dv">32</span>), BitVec(<span class="st">"hi"</span>, <span class="dv">32</span>)</span>
+<span id="cb2-4"><a href="" aria-hidden="true" tabindex="-1"></a>valid <span class="op">=</span> And(lo <span class="op">&gt;=</span> <span class="dv">0</span>, hi <span class="op">&gt;=</span> <span class="dv">0</span>)                        <span class="co"># real array indices</span></span>
+<span id="cb2-5"><a href="" aria-hidden="true" tabindex="-1"></a>true_mid <span class="op">=</span> LShR(ZeroExt(<span class="dv">1</span>, lo) <span class="op">+</span> ZeroExt(<span class="dv">1</span>, hi), <span class="dv">1</span>)  <span class="co"># midpoint, no overflow</span></span>
+<span id="cb2-6"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="" aria-hidden="true" tabindex="-1"></a>buggy <span class="op">=</span> (lo <span class="op">+</span> hi) <span class="op">/</span> <span class="dv">2</span></span>
+<span id="cb2-8"><a href="" aria-hidden="true" tabindex="-1"></a>prove(Implies(valid, true_mid <span class="op">==</span> ZeroExt(<span class="dv">1</span>, buggy)))</span>
+<span id="cb2-9"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="" aria-hidden="true" tabindex="-1"></a>fixed <span class="op">=</span> (lo <span class="op">&amp;</span> hi) <span class="op">+</span> LShR(lo <span class="op">^</span> hi, <span class="dv">1</span>)</span>
+<span id="cb2-11"><a href="" aria-hidden="true" tabindex="-1"></a>prove(Implies(valid, true_mid <span class="op">==</span> ZeroExt(<span class="dv">1</span>, fixed)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>Output</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode numberSource text number-lines code-with-copy"><code class="sourceCode"><span id="cb3-1"><a href=""></a>counterexample</span>
-<span id="cb3-2"><a href=""></a>[hi = 1874714396, lo = 2069860050]</span>
-<span id="cb3-3"><a href=""></a>proved</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<pre class="text"><code>counterexample
+[hi = 1874714396, lo = 2069860050]
+proved</code></pre>
 </section>
 <section id="replace-a-loop-with-an-expression" class="slide level2">
 <h2>Replace a loop with an expression</h2>
 <p><span class="math display">\[
 \sum_{k=0}^{n-1} (a + kd) = \frac{n(2a + (n - 1)d)}{2}
 \]</span></p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href=""></a><span class="im">from</span> sympy <span class="im">import</span> symbols, summation, simplify</span>
-<span id="cb4-2"><a href=""></a></span>
-<span id="cb4-3"><a href=""></a>a, d <span class="op">=</span> symbols(<span class="st">"a d"</span>)</span>
-<span id="cb4-4"><a href=""></a>n, k <span class="op">=</span> symbols(<span class="st">"n k"</span>, positive<span class="op">=</span><span class="va">True</span>, integer<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb4-5"><a href=""></a></span>
-<span id="cb4-6"><a href=""></a>lhs <span class="op">=</span> summation(a <span class="op">+</span> k <span class="op">*</span> d, (k, <span class="dv">0</span>, n <span class="op">-</span> <span class="dv">1</span>))</span>
-<span id="cb4-7"><a href=""></a>rhs <span class="op">=</span> n <span class="op">*</span> (<span class="dv">2</span> <span class="op">*</span> a <span class="op">+</span> (n <span class="op">-</span> <span class="dv">1</span>) <span class="op">*</span> d) <span class="op">/</span> <span class="dv">2</span></span>
-<span id="cb4-8"><a href=""></a></span>
-<span id="cb4-9"><a href=""></a><span class="cf">assert</span> lhs.equals(rhs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sympy <span class="im">import</span> symbols, summation, simplify</span>
+<span id="cb4-2"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="" aria-hidden="true" tabindex="-1"></a>a, d <span class="op">=</span> symbols(<span class="st">"a d"</span>)</span>
+<span id="cb4-4"><a href="" aria-hidden="true" tabindex="-1"></a>n, k <span class="op">=</span> symbols(<span class="st">"n k"</span>, positive<span class="op">=</span><span class="va">True</span>, integer<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-5"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="" aria-hidden="true" tabindex="-1"></a>lhs <span class="op">=</span> summation(a <span class="op">+</span> k <span class="op">*</span> d, (k, <span class="dv">0</span>, n <span class="op">-</span> <span class="dv">1</span>))</span>
+<span id="cb4-7"><a href="" aria-hidden="true" tabindex="-1"></a>rhs <span class="op">=</span> n <span class="op">*</span> (<span class="dv">2</span> <span class="op">*</span> a <span class="op">+</span> (n <span class="op">-</span> <span class="dv">1</span>) <span class="op">*</span> d) <span class="op">/</span> <span class="dv">2</span></span>
+<span id="cb4-8"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> lhs.equals(rhs)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>SymPy proves the general AP formula.</p>
 </section>
 <section id="proofs-as-functions" class="slide level2">
@@ -478,24 +485,24 @@ Melvin Zhang
 A \land B \;\implies\; B \land A
 \]</span></p>
 <p>Assume <code>A∧B</code>, take it apart, put it back together.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href=""></a><span class="im">from</span> proof <span class="im">import</span> proof</span>
-<span id="cb5-2"><a href=""></a><span class="im">from</span> tactics <span class="im">import</span> CONJ</span>
-<span id="cb5-3"><a href=""></a></span>
-<span id="cb5-4"><a href=""></a><span class="at">@proof</span></span>
-<span id="cb5-5"><a href=""></a><span class="kw">def</span> CONJ_COMM(p):</span>
-<span id="cb5-6"><a href=""></a>    p.goal(<span class="st">"!a:bool b:bool. a /</span><span class="ch">\\</span><span class="st"> b ==&gt; b /</span><span class="ch">\\</span><span class="st"> a"</span>)</span>
-<span id="cb5-7"><a href=""></a>    p.fix(<span class="st">"a b"</span>)                             <span class="co"># consider some bool a and b</span></span>
-<span id="cb5-8"><a href=""></a>    h <span class="op">=</span> p.assume(<span class="st">"a /</span><span class="ch">\\</span><span class="st"> b"</span>)                  <span class="co"># h is our assumption a /\ b</span></span>
-<span id="cb5-9"><a href=""></a>    ha, hb <span class="op">=</span> p.split(h)                      <span class="co"># from a /\ b, get a and b separately</span></span>
-<span id="cb5-10"><a href=""></a>    p.thus(<span class="st">"b /</span><span class="ch">\\</span><span class="st"> a"</span>).by_thm(CONJ(hb, ha))   <span class="co"># recombine, swapped</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> proof <span class="im">import</span> proof</span>
+<span id="cb5-2"><a href="" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tactics <span class="im">import</span> CONJ</span>
+<span id="cb5-3"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="" aria-hidden="true" tabindex="-1"></a><span class="at">@proof</span></span>
+<span id="cb5-5"><a href="" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> CONJ_COMM(p):</span>
+<span id="cb5-6"><a href="" aria-hidden="true" tabindex="-1"></a>    p.goal(<span class="st">"!a:bool b:bool. a /</span><span class="ch">\\</span><span class="st"> b ==&gt; b /</span><span class="ch">\\</span><span class="st"> a"</span>)</span>
+<span id="cb5-7"><a href="" aria-hidden="true" tabindex="-1"></a>    p.fix(<span class="st">"a b"</span>)                             <span class="co"># consider some bool a and b</span></span>
+<span id="cb5-8"><a href="" aria-hidden="true" tabindex="-1"></a>    h <span class="op">=</span> p.assume(<span class="st">"a /</span><span class="ch">\\</span><span class="st"> b"</span>)                  <span class="co"># h is our assumption a /\ b</span></span>
+<span id="cb5-9"><a href="" aria-hidden="true" tabindex="-1"></a>    ha, hb <span class="op">=</span> p.split(h)                      <span class="co"># from a /\ b, get a and b</span></span>
+<span id="cb5-10"><a href="" aria-hidden="true" tabindex="-1"></a>    p.thus(<span class="st">"b /</span><span class="ch">\\</span><span class="st"> a"</span>).by_thm(CONJ(hb, ha))   <span class="co"># recombine, swapped</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="proofs-in-python" class="slide level2">
 <h2>Proofs in Python</h2>
 <p>Python can host different styles of proof:</p>
 <ul>
-<li>circuits and logic with z3</li>
-<li>algebra with SymPy</li>
-<li>manual steps with pyzar</li>
+<li>bit-precise arithmetic with z3</li>
+<li>symbolic algebra with SymPy</li>
+<li>declarative step-by-step deduction with pyzar</li>
 </ul>
 </section>
 <section>
@@ -516,52 +523,50 @@ A \land B \;\implies\; B \land A
 <section id="full-adder-circuit" class="slide level2">
 <h2>Full adder circuit</h2>
 
-<img data-src="full_adder.svg" class="quarto-figure quarto-figure-center r-stretch" style="width:80.0%"><div class="sourceCode" id="cb6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href=""></a><span class="im">from</span> z3 <span class="im">import</span> Bools, Xor, And, Or, If, prove</span>
-<span id="cb6-2"><a href=""></a></span>
-<span id="cb6-3"><a href=""></a>a, b, cin <span class="op">=</span> Bools(<span class="st">"a b cin"</span>)</span>
-<span id="cb6-4"><a href=""></a></span>
-<span id="cb6-5"><a href=""></a>sum_bit <span class="op">=</span> Xor(Xor(a, b), cin)</span>
-<span id="cb6-6"><a href=""></a>carry <span class="op">=</span> Or(And(a, b), And(cin, Xor(a, b)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<img data-src="full_adder.svg" class="quarto-figure quarto-figure-center r-stretch" style="width:80.0%"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> z3 <span class="im">import</span> Bools, Xor, And, Or, If, prove</span>
+<span id="cb6-2"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="" aria-hidden="true" tabindex="-1"></a>a, b, cin <span class="op">=</span> Bools(<span class="st">"a b cin"</span>)</span>
+<span id="cb6-4"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="" aria-hidden="true" tabindex="-1"></a>sum_bit <span class="op">=</span> Xor(Xor(a, b), cin)</span>
+<span id="cb6-6"><a href="" aria-hidden="true" tabindex="-1"></a>carry <span class="op">=</span> Or(And(a, b), And(cin, Xor(a, b)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 
 <section id="full-adder-specification" class="slide level2">
 <h2>Full adder specification</h2>
-<div class="sourceCode" id="cb7"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href=""></a>total <span class="op">=</span> If(a, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">+</span> If(b, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">+</span> If(cin, <span class="dv">1</span>, <span class="dv">0</span>)</span>
-<span id="cb7-2"><a href=""></a></span>
-<span id="cb7-3"><a href=""></a>prove(If(sum_bit, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">==</span> total <span class="op">%</span> <span class="dv">2</span>)</span>
-<span id="cb7-4"><a href=""></a>prove(If(carry, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">==</span> total <span class="op">/</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</section>
-<section id="what-z3-checks" class="slide level2">
-<h2>What z3 checks</h2>
-<div class="sourceCode" id="cb8"><pre class="sourceCode numberSource text number-lines code-with-copy"><code class="sourceCode"><span id="cb8-1"><a href=""></a>proved</span>
-<span id="cb8-2"><a href=""></a>proved</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="" aria-hidden="true" tabindex="-1"></a>total <span class="op">=</span> If(a, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">+</span> If(b, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">+</span> If(cin, <span class="dv">1</span>, <span class="dv">0</span>)</span>
+<span id="cb7-2"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="" aria-hidden="true" tabindex="-1"></a>prove(If(sum_bit, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">==</span> total <span class="op">%</span> <span class="dv">2</span>)</span>
+<span id="cb7-4"><a href="" aria-hidden="true" tabindex="-1"></a>prove(If(carry, <span class="dv">1</span>, <span class="dv">0</span>) <span class="op">==</span> total <span class="op">/</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Output</p>
+<pre class="text"><code>proved
+proved</code></pre>
 <p>The two proof calls mean:</p>
 <ul>
 <li><code>sum_bit</code> is the low bit of <code>a + b + cin</code>.</li>
 <li><code>carry</code> is the high bit of <code>a + b + cin</code>.</li>
 </ul>
 </section>
-<section id="a-proof-by-hand" class="slide level2">
-<h2>A proof by hand</h2>
+<section id="a-natural-deduction-proof" class="slide level2">
+<h2>A natural deduction proof</h2>
 <p><span class="math display">\[
-A \land B \;\vdash\; B \land A
+A \land B \;\implies\; B \land A
 \]</span></p>
 <p>mathesis builds a natural-deduction proof backwards.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href=""></a><span class="im">from</span> mathesis.grammars <span class="im">import</span> BasicGrammar</span>
-<span id="cb9-2"><a href=""></a><span class="im">from</span> mathesis.deduction.natural_deduction <span class="im">import</span> NDTree, rules <span class="im">as</span> R</span>
-<span id="cb9-3"><a href=""></a></span>
-<span id="cb9-4"><a href=""></a>g <span class="op">=</span> BasicGrammar()</span>
-<span id="cb9-5"><a href=""></a>nd <span class="op">=</span> NDTree([g.parse(<span class="st">"A∧B"</span>)], g.parse(<span class="st">"B∧A"</span>))   <span class="co"># premise ⊢ goal</span></span>
-<span id="cb9-6"><a href=""></a>nd.<span class="bu">apply</span>(nd[<span class="dv">2</span>], R.Conjunction.Intro())          <span class="co"># to prove B∧A, prove B and A  [∧I]</span></span>
-<span id="cb9-7"><a href=""></a>nd.<span class="bu">apply</span>(nd[<span class="dv">4</span>], R.Conjunction.Elim(<span class="st">"right"</span>))    <span class="co"># B follows from A∧B           [∧E]</span></span>
-<span id="cb9-8"><a href=""></a>nd.<span class="bu">apply</span>(nd[<span class="dv">6</span>], R.Conjunction.Elim(<span class="st">"left"</span>))     <span class="co"># A follows from A∧B           [∧E]</span></span>
-<span id="cb9-9"><a href=""></a><span class="cf">assert</span> nd.is_valid()                            <span class="co"># every branch is justified</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mathesis.grammars <span class="im">import</span> BasicGrammar</span>
+<span id="cb9-2"><a href="" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mathesis.deduction.natural_deduction <span class="im">import</span> NDTree, rules <span class="im">as</span> R</span>
+<span id="cb9-3"><a href="" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="" aria-hidden="true" tabindex="-1"></a>g <span class="op">=</span> BasicGrammar()</span>
+<span id="cb9-5"><a href="" aria-hidden="true" tabindex="-1"></a>nd <span class="op">=</span> NDTree([g.parse(<span class="st">"A∧B"</span>)], g.parse(<span class="st">"B∧A"</span>))   <span class="co"># premise ⊢ goal</span></span>
+<span id="cb9-6"><a href="" aria-hidden="true" tabindex="-1"></a>nd.<span class="bu">apply</span>(nd[<span class="dv">2</span>], R.Conjunction.Intro())          <span class="co"># to prove B∧A, prove B and A  [∧I]</span></span>
+<span id="cb9-7"><a href="" aria-hidden="true" tabindex="-1"></a>nd.<span class="bu">apply</span>(nd[<span class="dv">4</span>], R.Conjunction.Elim(<span class="st">"right"</span>))    <span class="co"># B follows from A∧B           [∧E]</span></span>
+<span id="cb9-8"><a href="" aria-hidden="true" tabindex="-1"></a>nd.<span class="bu">apply</span>(nd[<span class="dv">6</span>], R.Conjunction.Elim(<span class="st">"left"</span>))     <span class="co"># A follows from A∧B           [∧E]</span></span>
+<span id="cb9-9"><a href="" aria-hidden="true" tabindex="-1"></a><span class="cf">assert</span> nd.is_valid()                            <span class="co"># every branch is justified</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section id="proving-the-halting-problem" class="slide level2">
 <h2>Proving the halting problem</h2>
 <p>No program can decide halting:</p>
 <p><span class="math display">\[
-\;\vdash\; \neg\,\exists H.\ \mathsf{halts\_decider}(H)
+\neg\,\exists H.\ \mathsf{halts\_decider}(H)
 \]</span></p>
 <p>where halts_decider H is a program where</p>
 <ul>
@@ -582,21 +587,22 @@ d &amp; \twoheadrightarrow &amp; \mathsf{App}_t\,H\,d &amp; \text{(diagonal)}\\
 \end{array}
 \]</span></p>
 </section>
-<section id="pyzar-proof" class="slide level2">
-<h2>pyzar proof</h2>
-<div class="sourceCode" id="cb10"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href=""></a><span class="at">@proof</span></span>
-<span id="cb10-2"><a href=""></a><span class="kw">def</span> HALTING_UNDECIDABLE(p):</span>
-<span id="cb10-3"><a href=""></a>    p.goal(<span class="st">"~ (?H. halts_decider H)"</span>)</span>
-<span id="cb10-4"><a href=""></a>    <span class="cf">with</span> p.suppose(<span class="st">"?H. halts_decider H"</span>) <span class="im">as</span> h_ex:</span>
-<span id="cb10-5"><a href=""></a>        <span class="co"># Curry diagonal: a term d that reduces to App_t H d:</span></span>
-<span id="cb10-6"><a href=""></a>        <span class="co"># therefore, halts d = halts (App_t H d)</span></span>
-<span id="cb10-7"><a href=""></a>        h_diag <span class="op">=</span> p.have(<span class="st">"?d. halts d = halts (App_t H d)"</span>).by(...)</span>
-<span id="cb10-8"><a href=""></a>        ...</span>
-<span id="cb10-9"><a href=""></a>        H, _ <span class="op">=</span> p.choose(<span class="st">"H"</span>, from_<span class="op">=</span>h_ex)</span>
-<span id="cb10-10"><a href=""></a>        <span class="co"># H decides halting (flipped)</span></span>
-<span id="cb10-11"><a href=""></a>        <span class="co"># therefore, halts t = ~halts (App_t H t)</span></span>
-<span id="cb10-12"><a href=""></a>        ...</span>
-<span id="cb10-13"><a href=""></a>        <span class="co"># combine: halts (App_t H d) = ~halts (App_t H d)  — contradiction</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<section id="sketch-of-the-pyzar-proof" class="slide level2">
+<h2>Sketch of the pyzar proof</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="" aria-hidden="true" tabindex="-1"></a><span class="at">@proof</span></span>
+<span id="cb10-2"><a href="" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> HALTING_UNDECIDABLE(p):</span>
+<span id="cb10-3"><a href="" aria-hidden="true" tabindex="-1"></a>    p.goal(<span class="st">"~ (?H. halts_decider H)"</span>)</span>
+<span id="cb10-4"><a href="" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> p.suppose(<span class="st">"?H. halts_decider H"</span>) <span class="im">as</span> h_ex:</span>
+<span id="cb10-5"><a href="" aria-hidden="true" tabindex="-1"></a>        h_diag <span class="op">=</span> p.have(<span class="st">"?d. halts d = halts (App_t H d)"</span>).by(..)</span>
+<span id="cb10-6"><a href="" aria-hidden="true" tabindex="-1"></a>        d <span class="op">=</span> p.choose(<span class="st">"d"</span>, <span class="im">from</span><span class="op">=</span>h_diag)</span>
+<span id="cb10-7"><a href="" aria-hidden="true" tabindex="-1"></a>        <span class="co"># d reduces to App_t H d, therefore</span></span>
+<span id="cb10-8"><a href="" aria-hidden="true" tabindex="-1"></a>        <span class="co"># halts d = halts (App_t H d)</span></span>
+<span id="cb10-9"><a href="" aria-hidden="true" tabindex="-1"></a>        ...</span>
+<span id="cb10-10"><a href="" aria-hidden="true" tabindex="-1"></a>        H, _ <span class="op">=</span> p.choose(<span class="st">"H"</span>, <span class="im">from</span><span class="op">=</span>h_ex)</span>
+<span id="cb10-11"><a href="" aria-hidden="true" tabindex="-1"></a>        <span class="co"># H decides halting (flipped), therefore</span></span>
+<span id="cb10-12"><a href="" aria-hidden="true" tabindex="-1"></a>        <span class="co"># halts d = ~halts (App_t H d)</span></span>
+<span id="cb10-13"><a href="" aria-hidden="true" tabindex="-1"></a>        ...</span>
+<span id="cb10-14"><a href="" aria-hidden="true" tabindex="-1"></a>        <span class="co"># contradiction</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="quarto-auto-generated-content">
 <div class="footer footer-default">
 
@@ -655,7 +661,7 @@ d &amp; \twoheadrightarrow &amp; \mathsf{App}_t\,H\,d &amp; \text{(diagonal)}\\
         progress: true,
 
         // Display the page number of the current slide
-        slideNumber: 'c/t',
+        slideNumber: false,
 
         // 'all', 'print', or 'speaker'
         showSlideNumber: 'all',
