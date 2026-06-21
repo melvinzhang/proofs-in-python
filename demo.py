@@ -76,8 +76,9 @@ def arithmetic_progression_sum():
 
     a, d = symbols("a d")
     n, k = symbols("n k", positive=True, integer=True)
-    total = summation(a + k * d, (k, 0, n - 1))
-    assert simplify(total - n * (2 * a + (n - 1) * d) / 2) == 0
+    lhs = summation(a + k * d, (k, 0, n - 1))
+    rhs = n * (2 * a + (n - 1) * d) / 2
+    assert lhs.equals(rhs)
     print("proved")
 
 
