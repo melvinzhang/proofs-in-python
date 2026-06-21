@@ -22,11 +22,9 @@ execute:
 `list.sort()` is **Timsort**. For ~9 years it had a bug in its
 run-merging logic — undetected by tests.
 
-- **2015:** de Gouw et al. try to *prove* it correct with the KeY
-  theorem prover. The proof fails — and points at a broken invariant.
-- Only triggers on huge, adversarial inputs → never hit by testing.
-- **Python 3.11:** the merge policy is replaced with **Powersort**,
-  *proven* near-optimal.
+- **2015:** de Gouw et al. tried to *prove* it correct with the KeY
+  theorem prover but failed
+- **Python 3.11:** the merge policy is replaced with **Powersort**
 
 The prover didn't just find the bug — it motivated a better algorithm.
 
