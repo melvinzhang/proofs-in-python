@@ -13,11 +13,7 @@ execute:
 
 ## Computational Thinkerers
 
-maker faire 2017
-
-learning journey
-
-critical software
+![](P1010133.JPG){fig-align="center" width="80%"}
 
 ## Why Proofs?
 
