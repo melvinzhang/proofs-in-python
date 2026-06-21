@@ -26,8 +26,8 @@ execute:
 `list.sort()` is **Timsort**. For ~9 years it had a bug in its run-merging logic — undetected by tests.
 
 - **2015:** de Gouw et al. tried to *prove* it correct with the KeY
-  theorem prover but failed^[S. de Gouw, J. Rot, F. S. de Boer, R. Bubel, R. Hähnle, "OpenJDK's `java.utils.Collection.sort()` is broken," CAV 2015.]
-- **Python 3.11:** merge policy is replaced with **Powersort**^[J. I. Munro & S. Wild, [*Nearly-Optimal Mergesorts*](https://www.wild-inter.net/publications/munro-wild-2018), ESA 2018.]
+  theorem prover but failed^[S. de Gouw et al., OpenJDK's `sort()` is broken, CAV 2015]
+- **Python 3.11:** merge policy is replaced with **Powersort**^[J. I. Munro & S. Wild, [*Nearly-Optimal Mergesorts*](https://www.wild-inter.net/publications/munro-wild-2018), ESA 2018]
 
 ## Another bug you can't test away
 
@@ -42,8 +42,6 @@ What is the bug?
 
 ## z3 finds it — and proves the fix
 
-z3 is a solver developed by Microsoft.
-
 ```python
 from z3 import BitVec, ZeroExt, LShR, Implies, And, prove
 
@@ -51,8 +49,11 @@ lo, hi = BitVec("lo", 32), BitVec("hi", 32)
 valid = And(lo >= 0, hi >= 0)                        # real array indices
 true_mid = LShR(ZeroExt(1, lo) + ZeroExt(1, hi), 1)  # midpoint, no overflow
 
-prove(Implies(valid, true_mid == ZeroExt(1, (lo + hi) / 2)))                  # buggy
-prove(Implies(valid, true_mid == ZeroExt(1, (lo & hi) + LShR(lo ^ hi, 1))))   # fixed
+buggy = (lo + hi) / 2
+prove(Implies(valid, true_mid == ZeroExt(1, buggy)))
+
+fixed = (lo & hi) + LShR(lo ^ hi, 1)
+prove(Implies(valid, true_mid == ZeroExt(1, fixed)))
 ```
 
 Output
@@ -62,7 +63,62 @@ counterexample
 proved
 ```
 
-`lo + hi` overflows to a negative `int` — z3 hands you the exact indices.
+`lo + hi` overflows to a negative `int`.
+
+## Replace a loop with an expression
+
+$$
+\sum_{k=0}^{n-1} (a + kd) = \frac{n(2a + (n - 1)d)}{2}
+$$
+
+```python
+from sympy import symbols, summation, simplify
+
+a, d = symbols("a d")
+n, k = symbols("n k", positive=True, integer=True)
+
+lhs = summation(a + k * d, (k, 0, n - 1))
+rhs = n * (2 * a + (n - 1) * d) / 2
+
+assert lhs.equals(rhs)
+```
+
+SymPy proves the general AP formula.
+
+
+## Proofs as functions
+
+pyzar is a declarative proof checker inspired by Mizar/Isar
+
+$$
+A \land B \;\implies\; B \land A
+$$
+
+Assume `A∧B`, take it apart, put it back together.
+
+```python
+from proof import proof
+from tactics import CONJ
+
+@proof
+def CONJ_COMM(p):
+    p.goal("!a:bool b:bool. a /\\ b ==> b /\\ a")
+    p.fix("a b")                             # consider some bool a and b
+    h = p.assume("a /\\ b")                  # h is our assumption a /\ b
+    ha, hb = p.split(h)                      # from a /\ b, get a and b separately
+    p.thus("b /\\ a").by_thm(CONJ(hb, ha))   # recombine, swapped
+```
+
+
+## Proofs in Python
+
+Python can host different styles of proof:
+
+- circuits and logic with z3
+- algebra with SymPy
+- manual steps with pyzar
+
+# Additional content
 
 ## Demo: full adder
 
@@ -126,26 +182,6 @@ The two proof calls mean:
 - `sum_bit` is the low bit of `a + b + cin`.
 - `carry` is the high bit of `a + b + cin`.
 
-## Replace a loop with an expression
-
-$$
-\sum_{k=0}^{n-1} (a + kd) = \frac{n(2a + (n - 1)d)}{2}
-$$
-
-```python
-from sympy import symbols, summation, simplify
-
-a, d = symbols("a d")
-n, k = symbols("n k", positive=True, integer=True)
-
-lhs = summation(a + k * d, (k, 0, n - 1))
-rhs = n * (2 * a + (n - 1) * d) / 2
-
-assert lhs.equals(rhs)
-```
-
-SymPy proves the general AP formula, not just a list of examples.
-
 ## A proof by hand
 
 $$
@@ -166,32 +202,30 @@ nd.apply(nd[6], R.Conjunction.Elim("left"))     # A follows from A∧B          
 assert nd.is_valid()                            # every branch is justified
 ```
 
-## The same proof with pyzar
-
-pyzar is a declarative proof checker inspired by Mizar/Isar
-
-pyzar builds it **forwards** — assume `A∧B`, take it apart, put it back together.
-
-```python
-from proof import proof
-from tactics import CONJ
-
-@proof
-def CONJ_COMM(p):
-    p.goal("!a:bool b:bool. a /\\ b ==> b /\\ a")
-    p.fix("a b")                             # consider some bool a and b
-    h = p.assume("a /\\ b")                  # h is our assumption a /\ b
-    ha, hb = p.split(h)                      # from a /\ b, get a and b separately
-    p.thus("b /\\ a").by_thm(CONJ(hb, ha))   # recombine, swapped
-```
-
 ## Proving the halting problem
 
-No SK combinator can decide halting:
+No program can decide halting:
 
 $$
 \;\vdash\; \neg\,\exists H.\ \mathsf{halts\_decider}(H)
 $$
+
+where halts_decider H is a program:
+
+* `(H d)` halts if `d` run forever
+* `(H d)` runs forver if `d` halts
+
+## The diagonal does the work
+
+Let `d` be a program that evaluates to `(H d)`
+
+```text
+d                 ->> App_t H d            -- d reduces to "H applied to d"
+halts d            = halts (App_t H d)     -- reduction preserves halting
+halts d            = ~halts (App_t H d)    -- H is a decider (flipped)
+--------------------------------------------------------------
+halts (App_t H d)  = ~halts (App_t H d)    -- P = ~P, impossible
+```
 
 ## pyzar proof
 
@@ -212,22 +246,3 @@ def HALTING_UNDECIDABLE(p):
             ...
 ```
 
-## The diagonal does the work
-
-The Curry term `d` **feeds itself to `H`**:
-
-```text
-d                 ->> App_t H d            -- d reduces to "H applied to d"
-halts d            = halts (App_t H d)     -- reduction preserves halting
-halts d            = ~halts (App_t H d)    -- H is a decider (flipped)
---------------------------------------------------------------
-halts (App_t H d)  = ~halts (App_t H d)    -- P = ~P, impossible
-```
-
-## Takeaway
-
-Python can host different styles of proof:
-
-- circuits and logic with z3
-- algebra with SymPy
-- manual steps with mathesis or pyzar
