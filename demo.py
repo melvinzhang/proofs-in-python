@@ -11,6 +11,7 @@ Writing proofs in Python — lightning talk demos.
 
 Run everything:           uv run demo.py
 Run one proof:            uv run demo.py full_adder
+                          uv run demo.py arithmetic_progression_sum
                           uv run demo.py double_angle
 
 Each function below proves ONE statement, and the proof is right there in
@@ -66,6 +67,17 @@ def sum_of_integers():
     n, k = symbols("n k", positive=True, integer=True)
     total = summation(k, (k, 1, n))                 # SymPy evaluates the sum
     assert simplify(total - n * (n + 1) / 2) == 0
+    print("proved")
+
+
+def arithmetic_progression_sum():
+    """AP sum: a + (a+d) + ... + (a+(n-1)d) = n(2a+(n-1)d)/2."""
+    from sympy import symbols, summation, simplify
+
+    a, d = symbols("a d")
+    n, k = symbols("n k", positive=True, integer=True)
+    total = summation(a + k * d, (k, 0, n - 1))
+    assert simplify(total - n * (2 * a + (n - 1) * d) / 2) == 0
     print("proved")
 
 
@@ -175,6 +187,18 @@ def shift_is_multiply():
     prove(x << 1 == x * 2)
 
 
+def midpoint():
+    """Binary search midpoint: (lo+hi)/2 overflows; an overflow-free form does not."""
+    from z3 import BitVec, ZeroExt, LShR, Implies, And, prove
+
+    lo, hi = BitVec("lo", 32), BitVec("hi", 32)
+    valid = And(lo >= 0, hi >= 0)                        # real array indices
+    true_mid = LShR(ZeroExt(1, lo) + ZeroExt(1, hi), 1)  # midpoint, no overflow
+
+    prove(Implies(valid, true_mid == ZeroExt(1, (lo + hi) / 2)))                  # buggy -> counterexample
+    prove(Implies(valid, true_mid == ZeroExt(1, (lo & hi) + LShR(lo ^ hi, 1))))   # fixed -> proved
+
+
 def xor_counterexample():
     """Disprove a false claim: z3 finds an input where x XOR y != x OR y."""
     from z3 import Bools, Xor, Or, Solver, sat
@@ -218,6 +242,7 @@ PROOFS = {
     "pythagorean_identity": pythagorean_identity,
     "compound_angle": compound_angle,
     "sum_of_integers": sum_of_integers,
+    "arithmetic_progression_sum": arithmetic_progression_sum,
     "sum_of_squares": sum_of_squares,
     "binomial_theorem": binomial_theorem,
     "quadratic_formula": quadratic_formula,
@@ -229,6 +254,7 @@ PROOFS = {
     "full_adder": full_adder,
     "twos_complement": twos_complement,
     "shift_is_multiply": shift_is_multiply,
+    "midpoint": midpoint,
     "xor_counterexample": xor_counterexample,
     "conjunction_commutes_by_hand": conjunction_commutes_by_hand,
 }
